@@ -24,6 +24,7 @@ api = Api(
 auth_ns = Namespace('auth', description='Authentication', path='/auth')
 user_ns = Namespace('user', description='User', path='/user')
 project_ns = Namespace('project', description='Project', path='/project')
+note_ns = Namespace('note', description='Note', path='/note')
 
 from app.controllers.auth import Register
 from app.controllers.auth import Login
@@ -39,6 +40,11 @@ from app.controllers.project import SingleProjectManager, UserProjectManager
 project_ns.add_resource(SingleProjectManager, '/singleProject', '/singleProject/<int:project_id>')
 project_ns.add_resource(UserProjectManager, '/userProject')
 
+from app.controllers.note import SingleNoteManager, ProjectNoteManager
+note_ns.add_resource(SingleNoteManager, '/singleNote', '/singleNote/<int:note_id>')
+note_ns.add_resource(ProjectNoteManager, '/projectNote')
+
 api.add_namespace(auth_ns)
 api.add_namespace(user_ns)
 api.add_namespace(project_ns)
+api.add_namespace(note_ns)
