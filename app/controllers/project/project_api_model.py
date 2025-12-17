@@ -56,3 +56,22 @@ project_delete_response_model = project_ns.model('ProjectDeleteResponseModel', {
     'code': fields.Integer(required=True, description='自定义状态码'),
     'message': fields.String(required=True, description='返回信息')
 })
+
+project_page_request_mode = project_ns.model('ProjectPageRequestModel', {
+    'query': fields.Nested(project_model, required=False, allow_null=True, description='查询条件'),
+    'page_no': fields.Integer(required=False, description='页码'),
+    'page_size': fields.Integer(required=False, description='每页数量')
+})
+project_page_model = project_ns.model('ProjectPageModel', {
+    'total': fields.Integer(required=True, description='总条数'),
+    'pages': fields.Integer(required=True, description='总页数'),
+    'page_no': fields.Integer(required=True, description='当前页码'),
+    'page_size': fields.Integer(required=True, description='每页数量'),
+    'data': fields.List(fields.Nested(project_model), allow_null=True)
+})
+
+project_page_response_model = project_ns.model('ProjectPageResponseModel', {
+    'code': fields.Integer(required=True, description='自定义状态码'),
+    'message': fields.String(required=True, description='返回信息'),
+    'page_data': fields.Nested(project_page_model, allow_null=True, description='分页数据')
+})

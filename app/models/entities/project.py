@@ -69,3 +69,68 @@ class Project(db.Model):
     @staticmethod
     def getProjectsByAccountId(account_id):
         return Project.query.filter_by(account_id=account_id).all()
+
+    # 获取账户下的项目（分页接口）
+    '''
+    根据账户ID获取项目列表（分页）
+    :param account_id: 账户ID
+    :param query: 查询条件 
+        {
+            "type": "note",
+			"name": "project-3",
+			"is_archived": false,
+			"is_recycle": false,
+			"is_favor": false,
+			"created_start_time": "2025-12-17 00:00:00",
+			"created_end_time": "2025-12-17 00:00:00",
+			"updated_start_time": "2025-12-17 00:00:00",
+			"updated_end_time: "2025-12-17 00:00:00"
+		}
+    :param page: 页码
+    :param per_page: 每页数量
+    :return: 包含项目列表、总数和总页数的字典
+    '''
+    @staticmethod
+    def getProjectsByAccountIdWithPagination(account_id, query_conditions, page, per_page):
+        query = Project.query.filter_by(account_id=account_id)
+
+        # 处理查询条件
+        if query_conditions:
+            # 根据项目类型过滤
+            if query_conditions.get('type'):
+                query = query.filter(Project.type == query_conditions['type'])
+
+            # 根据项目名称模糊匹配
+            if query_conditions.get('name'):
+                query = query.filter(Project.name.like('%' + query_conditions['name'] + '%'))
+
+            # 根据是否归档过滤
+            if query_conditions.get('is_archived') is not None:
+                query = query.filter(Project.is_archived == query_conditions['is_archived'])
+
+            # 根据是否在回收站过滤
+            if query_conditions.get('is_recycle') is not None:
+                query = query.filter(Project.is_recycle == query_conditions['is_recycle'])
+
+            # 根据是否收藏过滤
+            if query_conditions.get('is_favor') is not None:
+                query = query.filter(Project.is_favor == query_conditions['is_favor'])
+
+            # 根据创建时间范围过滤
+            if query_conditions.get('created_start_time'):
+                query = query.filter(Project.created_at >= query_conditions['created_start_time'])
+            if query_conditions.get('created_end_time'):
+                query = query.filter(Project.created_at <= query_conditions['created_end_time'])
+
+            # 根据更新时间范围过滤
+            if query_conditions.get('updated_start_time'):
+                query = query.filter(Project.updated_at >= query_conditions['updated_start_time'])
+            if query_conditions.get('updated_end_time'):
+                query = query.filter(Project.updated_at <= query_conditions['updated_end_time'])
+        total = query.count()
+        projects = query.offset((page - 1) * per_page).limit(per_page).all()
+        return {
+            'data': projects,
+            'total': total,
+            'pages': (total + per_page - 1) // per_page
+        }
