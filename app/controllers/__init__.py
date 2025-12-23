@@ -34,15 +34,16 @@ auth_ns.add_resource(Login, '/login')
 auth_ns.add_resource(Logout, '/logout')
 
 from app.controllers.user import UserManager
-user_ns.add_resource(UserManager, '/<int:user_id>')
+user_ns.add_resource(UserManager, '/currentUser', '/<int:user_id>')
 
 from app.controllers.project import SingleProjectManager, UserProjectManager
 project_ns.add_resource(SingleProjectManager, '/singleProject', '/singleProject/<int:project_id>')
 project_ns.add_resource(UserProjectManager, '/userProject')
 
-from app.controllers.note import SingleNoteManager, ProjectNoteManager
+from app.controllers.note import SingleNoteManager, ProjectNoteManager, AllNoteManager
 note_ns.add_resource(SingleNoteManager, '/singleNote', '/singleNote/<int:note_id>')
 note_ns.add_resource(ProjectNoteManager, '/projectNote')
+note_ns.add_resource(AllNoteManager, '/allNote')
 
 api.add_namespace(auth_ns)
 api.add_namespace(user_ns)

@@ -1,10 +1,10 @@
 from flask import request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource, reqparse
 from app.controllers import note_ns
 from app.models import Note, Project
 from .note_api_model import note_response_model, note_add_request_model, note_update_request_model, note_response_list_model, note_page_request_model, note_page_response_model
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.utils import hash_password
 
 class SingleNoteManager(Resource):
@@ -103,7 +103,9 @@ class SingleNoteManager(Resource):
             if not note:
                 return {'code': 404, 'message': '笔记不存在'}, 404
             else:
-                note.deleteNote()
+                # note.deleteNote()
+                note.is_recycle = True
+                note.updateNote()
                 return {'code': 200, 'message': '删除成功'}, 200
         except Exception as e:
             return {'code': 500, 'message': str(e)}, 500
@@ -113,15 +115,26 @@ class ProjectNoteManager(Resource):
     @note_ns.doc(description='获取项目下的笔记列表')
     @note_ns.marshal_with(note_response_list_model)
     def get(self):
-        project_id = request.headers.get('X-Project-Id')
+        parser = reqparse.RequestParser()
+        parser.add_argument('title', type=str, required=False, location='args')  # query 参数
+        parser.add_argument('isRecent', type=bool, required=False, location='args')
+        parser.add_argument('projectId', type=str, required=False, location='args')
+        try:
+            data = parser.parse_args()
+        except Exception as e:
+            return {'code': 400, 'message': '参数错误'}, 400
+        project_id = data['projectId'] if data['projectId'] else request.headers.get('X-Project-Id')
         if not project_id:
             return {'code': 400, 'message': '项目ID不能为空'}, 400
         else:
             project = Project.getProjectById(project_id)
             if not project:
                 return {'code': 404, 'message': '项目不存在'}, 404
+
         try:
-            notes = Note.getNotesByProjectId(project_id)
+            # notes = Note.getNotesByProjectId(project_id)
+            # 添加过滤回收站笔记的条件
+            notes = Note.getNotesByProjectIdExcludeRecycled(project_id, data['title'], data['isRecent'])
             return {'code': 200, 'message': '查询成功', 'data': notes}, 200
         except Exception as e:
             return {'code': 500, 'message': str(e)}, 500
@@ -153,3 +166,24 @@ class ProjectNoteManager(Resource):
             return {'code': 200, 'message': '查询成功', 'page_data': pageData}, 200
         except Exception as e:
             return {'code': 500, 'message': '分页查询失败：' + str(e)}, 500
+
+class AllNoteManager(Resource):
+    @jwt_required()
+    @note_ns.doc(description='获取所有笔记列表')
+    @note_ns.marshal_with(note_response_list_model)
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('isRecent', type=str, required=False)
+        query_args = parser.parse_args()
+
+        try:
+            current_user_id = get_jwt_identity()
+            # notes = Note.getNotesByUserId(current_user_id)
+
+            # 添加过滤回收站笔记的条件
+            notes = Note.getNotesByUserIdExcludeRecycled(current_user_id)
+            if query_args['isRecent']:
+                notes = [note for note in notes if note.updated_at > datetime.now() - timedelta(days=30)]
+            return {'code': 200, 'message': '查询成功', 'data': notes}, 200
+        except Exception as e:
+            return {'code': 500, 'message': str(e)}, 500

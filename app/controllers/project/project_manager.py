@@ -1,11 +1,12 @@
-from flask_jwt_extended import jwt_required
+from email.policy import default
+
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource, reqparse
 from app.controllers import project_ns
 from app.models import Project
 from .project_api_model import project_response_list_model, project_delete_response_model, project_add_request_model, \
     project_response_model, project_update_request_model, project_page_response_model, project_page_request_mode
-from datetime import datetime
-from flask_jwt_extended import get_jwt_identity
+from datetime import datetime, timedelta
 
 class SingleProjectManager(Resource):
     @jwt_required()
@@ -26,7 +27,7 @@ class SingleProjectManager(Resource):
     @project_ns.marshal_with(project_response_model)
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('type', type=str, required=True)
+        parser.add_argument('type', type=str, default='note', required=False)
         parser.add_argument('name', type=str, required=True)
         parser.add_argument('icon', type=str, required=False)
         parser.add_argument('description', type=str, required=False)
@@ -115,9 +116,20 @@ class UserProjectManager(Resource):
     @project_ns.doc(description='获取用户项目列表')
     @project_ns.marshal_with(project_response_list_model)
     def get(self):
+        # 添加 query 参数 isRecent
+        parser = reqparse.RequestParser()
+        parser.add_argument('isRecent', type=str, required=False)
+        parser.add_argument('status', type=str, required=False)
+        query_args = parser.parse_args()
         try:
             current_user_id = get_jwt_identity()
             projects = Project.getProjectsByAccountId(current_user_id)
+            if query_args['isRecent']:
+                # 获取最近一个月的项目列表
+                projects = [project for project in projects if project.updated_at > datetime.now() - timedelta(days=30)]
+            if query_args['status']:
+                status_list = [status.strip() for status in query_args['status'].split(',')]
+                projects = [project for project in projects if project.status in status_list]
             return {'code': 200, 'message': '查询成功', 'data': projects}, 200
         except Exception as e:
             return {'code': 500, 'message': str(e)}, 500

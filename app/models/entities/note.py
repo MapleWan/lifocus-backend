@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.extension import db
 from app.utils import format_datetime_to_string
-
+from .project import Project
 class Note(db.Model):
     __tablename__ = 'note'
     id = db.Column(db.Integer(), primary_key=True, nullable=False, autoincrement=True, comment='笔记ID')
@@ -51,6 +51,11 @@ class Note(db.Model):
             'updated_at': format_datetime_to_string(self.updated_at)
         }
 
+    # 获取某一用户的所有笔记
+    @staticmethod
+    def getNotesByUserId(user_id):
+        return Note.query.join(Project, Note.project_id == Project.id)\
+                   .filter(Project.account_id == user_id).all()
     # 根据笔记ID获取笔记信息
     @staticmethod
     def getNoteById(note_id):
@@ -85,3 +90,26 @@ class Note(db.Model):
             'total': total,
             'pages': (total + page_size - 1) // page_size
         }
+
+    # 在 Note 模型中添加新方法
+    @staticmethod
+    def getNotesByProjectIdExcludeRecycled(project_id, title, isRecent):
+        """获取项目下非回收站的笔记"""
+        query = Note.query.filter_by(project_id=project_id, is_recycle=False)
+        if title:
+            query = query.filter(Note.title.like(f'%{title}%'))
+        if isRecent:
+            updated_start_time = datetime.now() - timedelta(days=30)
+            updated_end_time = datetime.now()
+            query = query.filter(Note.updated_at >= updated_start_time)
+            query = query.filter(Note.updated_at <= updated_end_time)
+
+
+        return query.all()
+
+    @staticmethod
+    def getNotesByUserIdExcludeRecycled(user_id):
+        """获取用户下非回收站的笔记"""
+        return Note.query.join(Project, Note.project_id == Project.id) \
+            .filter(Project.account_id == user_id) \
+            .filter(Note.is_recycle == False).all()
