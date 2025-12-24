@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from app.utils import hash_password
 import os
 import zipfile
+import re
 import tempfile
 from flask import send_file
 
@@ -227,11 +228,11 @@ class NoteExportManager(Resource):
                 # 创建Markdown格式的内容
                 md_content = self._convert_to_markdown(note)
 
-                # 使用笔记标题作为文件名，避免特殊字符
-                safe_title = "".join(c for c in note.title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                # 使用笔记标题作为文件名，支持空格和中文，移除特殊字符
+                # safe_title = self._sanitize_filename(note.title)
+                safe_title = note.title
                 if not safe_title:
                     safe_title = f"note_{note.id}"
-
                 md_filename = f"{safe_title}.md"
 
                 # 创建临时文件
@@ -262,11 +263,11 @@ class NoteExportManager(Resource):
                         # 创建Markdown格式的内容
                         md_content = self._convert_to_markdown(note)
 
-                        # 使用笔记标题作为文件名，避免特殊字符
-                        safe_title = "".join(c for c in note.title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                        # 使用笔记标题作为文件名，支持空格和中文，移除特殊字符
+                        safe_title = self._sanitize_filename(note.title)
+                        safe_title = note.title
                         if not safe_title:
                             safe_title = f"note_{note.id}"
-
                         # 防止文件名重复
                         file_name = f"{safe_title}.md"
                         if file_name in zipf.namelist():
@@ -285,14 +286,38 @@ class NoteExportManager(Resource):
         except Exception as e:
             return {'code': 500, 'message': f'导出失败：{str(e)}'}, 500
 
+    def _sanitize_filename(self, title):
+        """清理文件名，保留字母、数字、空格、中文字符和基本标点"""
+        # 使用正则表达式保留字母、数字、空格、中文字符和基本标点
+        # \w 包括字母、数字、下划线
+        # \u4e00-\u9fff 匹配中文字符
+        # \s 匹配空白字符（包括空格）
+        # 允许的标点符号：- _ . ( ) [ ] 等
+        safe_title = re.sub(r'[^\w\s\u4e00-\u9fff\-\_\.\(\)\[\]\,\!\?\u3001\u3002\uFF0C\uFF1A\uFF1B\uFF1F\uFF01]', '_',
+                            title)
+
+        # 替换多个连续的空格为单个空格
+        safe_title = re.sub(r'\s+', ' ', safe_title)
+
+        # 去除首尾空格
+        safe_title = safe_title.strip()
+
+        # 限制文件名长度，防止过长
+        max_length = 100
+        if len(safe_title) > max_length:
+            safe_title = safe_title[:max_length]
+        print(safe_title)
+        return safe_title
+
     def _convert_to_markdown(self, note):
         """将笔记转换为Markdown格式"""
         # 基础Markdown格式
-        md_content = f"# {note.title}\n\n"
+        md_content = ""
+        # md_content = f"# {note.title}\n\n"
 
         # 添加元数据信息
-        md_content += f"> 创建时间: {note.created_at}\n"
-        md_content += f"> 更新时间: {note.updated_at}\n\n"
+        # md_content += f"> 创建时间: {note.created_at}\n"
+        # md_content += f"> 更新时间: {note.updated_at}\n\n"
 
         # 添加笔记内容
         md_content += note.content
