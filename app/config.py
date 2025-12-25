@@ -22,7 +22,7 @@ class Config(object):
     FLASK_RUN_PORT = os.getenv('FLASK_RUN_PORT')
 
     # 配置数据库连接字符串
-    SQLALCHEMY_DATABASE_URI = '{}+{}://{}:{}@{}:{}/{}?charset=utf8'.format(DIALECT, DRIVER, USERNAME, PASSWORD, HOSTNAEME, PORT, DATABASE)
+    SQLALCHEMY_DATABASE_URI = '{}+{}://{}:{}@{}:{}/{}?charset=utf8mb4'.format(DIALECT, DRIVER, USERNAME, PASSWORD, HOSTNAEME, PORT, DATABASE)
 
     #JWT配置
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
