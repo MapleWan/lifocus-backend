@@ -1,3 +1,5 @@
+from email.policy import default
+
 from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource, reqparse
@@ -185,5 +187,31 @@ class AllNoteManager(Resource):
             if query_args['isRecent']:
                 notes = [note for note in notes if note.updated_at > datetime.now() - timedelta(days=30)]
             return {'code': 200, 'message': '查询成功', 'data': notes}, 200
+        except Exception as e:
+            return {'code': 500, 'message': str(e)}, 500
+
+    @jwt_required()
+    @note_ns.doc(description='获取所有笔记列表【分页接口】')
+    @note_ns.marshal_with(note_page_response_model)  # 或创建新的分页响应模型
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('is_recent', type=bool, required=False, default=False)
+        parser.add_argument('page_no', type=int, required=False, default=1)
+        parser.add_argument('page_size', type=int, required=False, default=20)
+        data = parser.parse_args()
+
+        try:
+            current_user_id = get_jwt_identity()
+
+            # 使用分页查询
+            pageData = Note.getNotesByUserIdExcludeRecycledWithPagination(
+                current_user_id,
+                data['is_recent'],
+                data['page_no'],
+                data['page_size']
+            )
+            pageData['page_no'] = data['page_no']
+            pageData['page_size'] = data['page_size']
+            return {'code': 200, 'message': '查询成功', 'page_data': pageData}, 200
         except Exception as e:
             return {'code': 500, 'message': str(e)}, 500

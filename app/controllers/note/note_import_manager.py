@@ -33,8 +33,8 @@ class NoteImportManager(Resource):
             return {'code': 400, 'message': '文件上传失败'}, 400
 
         try:
-            filename = secure_filename(file.filename)
-
+            # filename = secure_filename(file.filename)
+            filename = file.filename
             # 根据文件扩展名判断处理方式
             if filename.lower().endswith('.md'):
                 # 单个MD文件处理

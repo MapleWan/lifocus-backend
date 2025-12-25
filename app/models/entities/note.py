@@ -113,3 +113,25 @@ class Note(db.Model):
         return Note.query.join(Project, Note.project_id == Project.id) \
             .filter(Project.account_id == user_id) \
             .filter(Note.is_recycle == False).all()
+
+    @staticmethod
+    def getNotesByUserIdExcludeRecycledWithPagination(user_id, is_recent=False, page_no=1, page_size=20):
+        """获取用户下非回收站的笔记（分页）"""
+
+        query = Note.query.join(Project, Note.project_id == Project.id) \
+            .filter(Project.account_id == user_id) \
+            .filter(Note.is_recycle == False)
+        if is_recent:
+            updated_start_time = datetime.now() - timedelta(days=30)
+            updated_end_time = datetime.now()
+            query = query.filter(Note.updated_at >= updated_start_time)
+            query = query.filter(Note.updated_at <= updated_end_time)
+        # 查询总数
+        total = query.count()
+
+        notes = query.offset((page_no - 1) * page_size).limit(page_size).all()
+        return {
+            'data': notes,
+            'total': total,
+            'pages': (total + page_size - 1) // page_size
+        }
