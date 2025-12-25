@@ -40,11 +40,12 @@ from app.controllers.project import SingleProjectManager, UserProjectManager
 project_ns.add_resource(SingleProjectManager, '/singleProject', '/singleProject/<int:project_id>')
 project_ns.add_resource(UserProjectManager, '/userProject')
 
-from app.controllers.note import SingleNoteManager, ProjectNoteManager, AllNoteManager, NoteExportManager
+from app.controllers.note import SingleNoteManager, ProjectNoteManager, AllNoteManager, NoteExportManager, NoteImportManager
 note_ns.add_resource(SingleNoteManager, '/singleNote', '/singleNote/<int:note_id>')
 note_ns.add_resource(ProjectNoteManager, '/projectNote')
 note_ns.add_resource(AllNoteManager, '/allNote')
 note_ns.add_resource(NoteExportManager, '/export')
+note_ns.add_resource(NoteImportManager, '/import')
 
 api.add_namespace(auth_ns)
 api.add_namespace(user_ns)
