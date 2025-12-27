@@ -17,6 +17,21 @@ note_model = note_ns.model('Note', {
     'updated_at': fields.String(required=True, description='更新时间'),
 })
 
+note_model_no_content = note_ns.model('NoteNoContent', {
+    'id': fields.Integer(required=True, description='笔记id'),
+    'project_id': fields.Integer(required=True, description='项目id'),
+    'type': fields.String(required=True, description='笔记类型'),
+    'title': fields.String(required=True, description='笔记标题'),
+    'folder': fields.String(required=True, description='笔记文件夹'),
+    'status': fields.String(required=True, description='笔记状态'),
+    'is_archived': fields.Boolean(required=True, description='是否归档'),
+    'is_recycle': fields.Boolean(required=True, description='是否回收'),
+    'is_share': fields.Boolean(required=True, description='是否共享'),
+    'share_password': fields.String(required=True, description='共享密码'),
+    'created_at': fields.String(required=True, description='创建时间'),
+    'updated_at': fields.String(required=True, description='更新时间'),
+})
+
 note_response_model = note_ns.model('NoteResponseModel', {
     'code': fields.Integer(required=True, description='状态码'),
     'message': fields.String(required=True, description='返回信息'),
@@ -58,7 +73,7 @@ note_delete_response_model = note_ns.model('NoteDeleteResponseModel', {
 note_response_list_model = note_ns.model('NoteResponseModel', {
     'code': fields.Integer(required=True, description='自定义状态码'),
     'message': fields.String(required=True, description='返回信息'),
-    'data': fields.List(fields.Nested(note_model), allow_null=True),
+    'data': fields.List(fields.Nested(note_model_no_content), allow_null=True),
 })
 
 note_page_model = note_ns.model('NotePageModel', {
@@ -66,7 +81,7 @@ note_page_model = note_ns.model('NotePageModel', {
     'pages': fields.Integer(required=True, description='总页数'),
     'page_no': fields.Integer(required=True, description='当前页码'),
     'page_size': fields.Integer(required=True, description='每页数量'),
-    'data': fields.List(fields.Nested(note_model), allow_null=True)
+    'data': fields.List(fields.Nested(note_model_no_content), allow_null=True)
 })
 note_page_request_model = note_ns.model('NotePageRequestModel', {
     'query': fields.Nested(note_model, required=False, allow_null=True, description='查询条件'),
