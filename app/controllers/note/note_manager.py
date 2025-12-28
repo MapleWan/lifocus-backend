@@ -1,19 +1,64 @@
-from email.policy import default
-
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, current_user
 from flask_restx import Resource, reqparse
 from app.controllers import note_ns
-from app.models import Note, Project
+from app.models import Note, Project, User
 from .note_api_model import note_response_model, note_add_request_model, note_update_request_model, note_response_list_model, note_page_request_model, note_page_response_model
 from datetime import datetime, timedelta
 from app.utils import hash_password
+import os
+import re
+
+
+def sanitize_filename(filename):
+    """
+    清理文件名，移除不安全的字符
+    """
+    # 移除不安全的字符，只保留字母、数字、空格、下划线和连字符
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    return sanitized
+
+
+def save_note_to_file_system(note, project):
+    """
+    将笔记内容保存到服务器文件系统中
+    """
+    try:
+        # 获取用户主目录
+        home_dir = os.path.expanduser("~")
+
+        current_user_id = get_jwt_identity()
+        user = User.getUserById(current_user_id)  # 假设 User 模型有此方法
+        if not user:
+            print(f"无法获取用户信息，用户ID: {current_user_id}")
+            return False
+        # 构建笔记存储路径
+        notes_dir = os.path.join(home_dir, "lifocus_data", "notes", sanitize_filename(user.username), sanitize_filename(project.name))
+        
+        # 创建目录（如果不存在）
+        os.makedirs(notes_dir, exist_ok=True)
+        
+        # 为笔记文件生成安全的文件名
+        note_filename = sanitize_filename(note.title) + ".md"
+        note_path = os.path.join(notes_dir, note_filename)
+        
+        # 写入文件
+        with open(note_path, 'w', encoding='utf-8') as f:
+            f.write(note.content)
+        
+        print(f"笔记已保存到: {note_path}")
+        return True
+    except Exception as e:
+        print(f"保存笔记文件时发生错误: {str(e)}")
+        return False
+
 
 class SingleNoteManager(Resource):
     @jwt_required()
     @note_ns.doc(description='根据笔记ID获取笔记信息')
     @note_ns.marshal_with(note_response_model)
     def get(self, note_id):
+        print(current_user)
         try:
             note = Note.getNoteById(note_id)
             if not note:
@@ -53,6 +98,10 @@ class SingleNoteManager(Resource):
             if data.share_password: data.share_password = hash_password(data['share_password'])
             note = Note(**data)
             note.addNote()
+            
+            # 将笔记内容保存到文件系统
+            save_note_to_file_system(note, project)
+            
             return {'code': 201, 'message': '新增成功', 'data': note}, 201
         except Exception as e:
             return {'code': 500, 'message': '新增失败，' + str(e)}, 500
