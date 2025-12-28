@@ -1,5 +1,5 @@
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity, current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource, reqparse
 from app.controllers import note_ns
 from app.models import Note, Project, User
@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from app.utils import hash_password
 import os
 import re
-
+import copy
 
 def sanitize_filename(filename):
     """
@@ -18,6 +18,31 @@ def sanitize_filename(filename):
     sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
     return sanitized
 
+def delete_note_from_file_system(note, project):
+    """
+    删除笔记内容从服务器文件系统中
+    """
+    try:
+        # 获取用户主目录
+        home_dir = os.path.expanduser("~")
+        project = Project.getProjectById(project.id)
+        if not project:
+            print(f"无法获取项目信息")
+            return False
+        user = User.getUserById(get_jwt_identity())
+        if not user:
+            print(f"无法获取用户信息")
+            return False
+        notes_dir = os.path.join(home_dir, "lifocus_data", "notes", sanitize_filename(user.username), sanitize_filename(project.name))
+        note_file_name = sanitize_filename(note.title) + ".md"
+        note_path = os.path.join(notes_dir, note_file_name)
+        if os.path.exists(note_path):
+            os.remove(note_path)
+        print(f"已删除笔记文件: {note_path}")
+        return True
+    except Exception as e:
+        print(f"删除笔记文件时发生错误: {str(e)}")
+        return False
 
 def save_note_to_file_system(note, project):
     """
@@ -58,7 +83,6 @@ class SingleNoteManager(Resource):
     @note_ns.doc(description='根据笔记ID获取笔记信息')
     @note_ns.marshal_with(note_response_model)
     def get(self, note_id):
-        print(current_user)
         try:
             note = Note.getNoteById(note_id)
             if not note:
@@ -128,6 +152,7 @@ class SingleNoteManager(Resource):
         data['update_time'] = datetime.now()
         try:
             note = Note.getNoteById(note_id)
+            origin_note = copy.deepcopy(note)
             if not note:
                 return {'code': 404, 'message': '笔记不存在'}, 404
             else:
@@ -141,6 +166,15 @@ class SingleNoteManager(Resource):
                 if data['is_share'] is not None: note.is_share = data['is_share']
                 if data['share_password']: note.share_password = hash_password(data['share_password'])
                 note.updateNote()
+                # 获取项目信息用于保存到文件系统
+                project = Project.getProjectById(note.project_id)
+                if project:
+                    # 如果标题修改了，则删除旧笔记文件
+                    if data['title']:
+                        delete_note_from_file_system(origin_note, project)
+                    # 如果内容修改了，则保存新笔记文件
+                    if data['content']:
+                        save_note_to_file_system(note, project)
                 return {'code': 200, 'message': '更新成功', 'data': note}, 200
         except Exception as e:
             return {'code': 500, 'message': str(e)}, 500
@@ -157,6 +191,8 @@ class SingleNoteManager(Resource):
                 # note.deleteNote()
                 note.is_recycle = True
                 note.updateNote()
+                project = Project.getProjectById(note.project_id)
+                delete_note_from_file_system(note, project)
                 return {'code': 200, 'message': '删除成功'}, 200
         except Exception as e:
             return {'code': 500, 'message': str(e)}, 500
